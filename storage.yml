@@ -1,0 +1,23 @@
+trigger: none
+
+pool:
+  vmimage: 'ubuntu-latest'
+
+
+variables:
+  resourceGroupName: 'yaml-rg'
+  location: 'eastus'
+  storageAccountName: 'yaml-sg2026'
+  sku: 'Standard_LRS'
+
+
+steps:
+- task: AzureCLI@2
+  displayName: 'new storage account using yaml'
+  inputs:
+    azuresubscription: 'subscription'
+    scriptype: 'bash'
+    inlinescript: |
+      echo "creating a storage account..."
+      az group create --name ${{ variables.resourceGroupName }} --location ${{ variables.location }}
+      az storage account create --name ${{ variables.storageAccountName }} --sku ${{ variables.sku }} --resourcegroup ${{ variables.resourceGroupName }} --location ${{ variables.location }}
