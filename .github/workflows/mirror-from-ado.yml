@@ -1,0 +1,58 @@
+name: Mirror from Azure DevOps
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitHub repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      - name: Debug and mirror from Azure DevOps
+        env:
+          AZURE_ORG: ${{ secrets.AZURE_ORG }}
+          AZURE_PROJECT: ${{ secrets.AZURE_PROJECT }}
+          AZURE_REPO: ${{ secrets.AZURE_REPO }}
+          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+          GH_PUSH_PAT: ${{ secrets.GH_PUSH_PAT }}
+        run: |
+          set -e
+          # Sanitize inputs
+          CLEAN_PAT=$(printf '%s' "$AZURE_PAT" | tr -d '\r\n' | xargs)
+          CLEAN_ORG=$(printf '%s' "$AZURE_ORG" | tr -d '\r\n' | xargs)
+          CLEAN_PROJECT=$(printf '%s' "$AZURE_PROJECT" | tr -d '\r\n' | xargs)
+          CLEAN_REPO=$(printf '%s' "$AZURE_REPO" | tr -d '\r\n' | xargs)
+          CLEAN_GITHUB_PAT=$(printf '%s' "$GH_PUSH_PAT" | tr -d '\r\n' | xargs)
+          # Build Azure URL
+          AZURE_URL=$(printf 'https://%s@dev.azure.com/%s/%s/_git/%s' \
+            "$CLEAN_PAT" "$CLEAN_ORG" "$CLEAN_PROJECT" "$CLEAN_REPO")
+          # Configure Azure remote
+          git remote remove azure 2>/dev/null || true
+          git remote add azure "$AZURE_URL"
+          # Fetch from Azure
+          git fetch azure
+          # Ensure local main exists
+          if ! git show-ref --verify --quiet refs/heads/main; then
+            git checkout -b main
+          fi
+          # Reset to Azure's main
+          git checkout main
+          git reset --hard azure/main
+          # Set origin to use PAT for push
+          GITHUB_URL=$(printf 'https://%s@github.com/kkazuredev/yamldevops.git' "$CLEAN_GITHUB_PAT")
+          git remote set-url origin "$GITHUB_URL"
+          # Optional: show origin URL (PAT masked in logs automatically)
+          echo "Origin URL set; pushing to GitHub..."
+          # Push to GitHub
+          git push origin main --force
