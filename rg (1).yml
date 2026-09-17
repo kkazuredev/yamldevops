@@ -1,0 +1,22 @@
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+
+variables:
+  resourceGroupName: 'yaml-rg'
+  location: 'eastus'
+
+
+steps:
+- task: AzureCLI@2
+  displayName: 'new rg using yaml'
+  inputs:
+    azureSubscription: 'devops'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlinescript: |
+      echo "creating a rg..."
+      az group create --name ${{ variables.resourceGroupName }} --location ${{ variables.location }}
+

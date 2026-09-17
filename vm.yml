@@ -1,0 +1,65 @@
+trigger: none
+  # branches:
+   # include:
+   #   - main
+
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+
+variables:
+  resourceGroupName: 'yaml-rg'
+  location: 'eastus'
+  storageAccountName: 'yamlsg2026'
+  sku: 'Standard_LRS'
+  vmName: 'yaml-vm'
+  #image: 'MicrosoftWindowsServer:WindowsServer:2025-datacenter-g2:latest'
+  image: 'win2022Datacenter'
+  adminUsername: 'testazure'
+  adminPassword: 'Test@admin123'
+  vmSize: 'Standard_DC1s_v3'
+
+
+steps:
+- task: AzureCLI@2
+  displayName: 'new rg using yaml'
+  inputs:
+    azureSubscription: 'devops-sub'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az group create \
+        --name ${{ variables.resourceGroupName }} \
+        --location ${{ variables.location }}
+
+
+
+- task: AzureCLI@2
+  displayName: 'new vm using yaml'
+  inputs:
+    azureSubscription: 'devops-sub'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az vm create \
+        --resource-group ${{ variables.resourceGroupName }} \
+        --name ${{ variables.vmName }} \
+        --image ${{ variables.image }} \
+        --admin-username ${{ variables.adminUsername }} \
+        --admin-password ${{ variables.adminPassword }} \
+        --size ${{ variables.vmSize }} \
+        --output json
+
+
+- task: AzureCLI@2
+  displayName: 'Open RDP port 3389'
+  inputs:
+    azureSubscription: 'devops-sub'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az vm open-port \
+      --resource-group ${{ variables.resourceGroupName }} \
+      --name ${{ variables.vmName }} \
+      --port 3389
